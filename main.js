@@ -332,8 +332,8 @@ function handleClientMessage(message, json) {
 }
 
 function checkClientMessage(ws, message) {
-    console.log(`###################LOG################### Client Message:`)
-    console.log(`${message}`)
+    //console.log(`###################LOG################### Client Message:`)
+    //console.log(`${message}`)
     let json = Schema.checkClientSchema(message)
     if (json == false) {
         //json格式不合法
