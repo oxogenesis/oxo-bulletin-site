@@ -1,3 +1,12 @@
+//config
+//standalone server
+const Seed = oxoKeyPairs.generateSeed("obeTvR9XDbUwquA6JPQhmbgaCCaiFa2rvf", 'secp256k1')
+const OtherServer = []
+
+//interconnect servers
+//const Seed = "xp1jB6s7H1WjXrpUSUHb3fv12Fdge"
+//const OtherServer = [{ "URL": "ws://127.0.0.1:3333", "Address": "o5gVGxqPFCvzTAQ5BpMnwtS8xYvnXQDJoU" }]
+
 //keep alive
 process.on('uncaughtException', function(err) {
     //打印出错误
@@ -209,7 +218,6 @@ initDB()
 ////////hard copy from client<<<<<<<<
 const crypto = require("crypto")
 
-const Seed = "xrUC4rWbXPizJVmusxb31LcexnkT2"
 const keypair = oxoKeyPairs.deriveKeypair(Seed)
 const Address = oxoKeyPairs.deriveAddress(keypair.publicKey)
 const PublicKey = keypair.publicKey
@@ -235,15 +243,43 @@ function GenBulletinRequest(address, sequence, to) {
     let strJson = JSON.stringify(json)
     return strJson
 }
+
+function GenObjectResponse(object, to) {
+    let json = {
+        "Action": ActionCode.ObjectResponse,
+        "Object": object,
+        "To": to,
+        "Timestamp": Date.now(),
+        "PublicKey": PublicKey,
+    }
+    let sig = sign(JSON.stringify(json), PrivateKey)
+    json.Signature = sig
+    let strJson = JSON.stringify(json)
+    return strJson
+}
+
+function GenDeclare() {
+    //send declare to server
+    let json = {
+        "Action": ActionCode["Declare"],
+        "Timestamp": new Date().getTime(),
+        "PublicKey": PublicKey
+    }
+    let sig = sign(JSON.stringify(json), PrivateKey)
+    json.Signature = sig
+    let strJson = JSON.stringify(json)
+    return strJson
+}
 ////////hard copy from client>>>>>>>>
 
 function CacheBulletin(bulletin) {
     let timestamp = Date.now()
     let hash = quarterSHA512(JSON.stringify(bulletin))
     let address = oxoKeyPairs.deriveAddress(bulletin.PublicKey)
+    let bulletinMessage = JSON.stringify(bulletin)
     //console.log(hash)
     let SQL = `INSERT INTO BULLETINS (hash, pre_hash, address, sequence, content, quote, json, signed_at, created_at)
-                VALUES ('${hash}', '${bulletin.PreHash}', '${address}', '${bulletin.Sequence}', '${bulletin.Content}', '${JSON.stringify(bulletin.Quote)}', '${JSON.stringify(bulletin)}', ${bulletin.Timestamp}, ${timestamp})`
+                VALUES ('${hash}', '${bulletin.PreHash}', '${address}', '${bulletin.Sequence}', '${bulletin.Content}', '${JSON.stringify(bulletin.Quote)}', '${bulletinMessage}', ${bulletin.Timestamp}, ${timestamp})`
     DB.run(SQL, err => {
         if (err) {
             console.log(err)
@@ -257,6 +293,14 @@ function CacheBulletin(bulletin) {
                     PageLinkArray.push(`<a href="/bulletins?page=${i}">${i}</a>`)
                 }
                 PageLinks = PageLinkArray.join(' ')
+            }
+
+            //Brocdcast to OtherServer
+            for (let i in OtherServer) {
+                let ws = ClientConns[OtherServer[i]["Address"]]
+                if (ws != undefined && ws.readyState == WebSocket.OPEN) {
+                    ws.send(GenObjectResponse(bulletin, OtherServer[i]["Address"]))
+                }
             }
         }
     })
@@ -288,8 +332,8 @@ function handleClientMessage(message, json) {
 }
 
 function checkClientMessage(ws, message) {
-    //console.log(`###################LOG################### Client Message:`)
-    //console.log(`${message}`)
+    console.log(`###################LOG################### Client Message:`)
+    console.log(`${message}`)
     let json = Schema.checkClientSchema(message)
     if (json == false) {
         //json格式不合法
@@ -382,6 +426,52 @@ function startClientServer() {
 }
 
 startClientServer()
+
+function keepOtherServerConn() {
+    let notConnected = []
+    for (let i in OtherServer) {
+        if (ClientConns[OtherServer[i]["Address"]] == undefined) {
+            notConnected.push(OtherServer[i])
+        }
+    }
+
+    if (notConnected.length == 0) {
+        return
+    }
+
+    let random = Math.floor(Math.random() * (notConnected.length))
+    let randomServerUrl = notConnected[random]["URL"]
+    if (randomServerUrl != null) {
+        console.log(`keepOtherServerConn connecting to StaticCounter ${randomServerUrl}`)
+        try {
+            var ws = new WebSocket(randomServerUrl)
+
+            ws.on('open', function open() {
+                ws.send(GenDeclare())
+                ClientConns[notConnected[random]["Address"]] = ws
+            })
+
+            ws.on('message', function incoming(message) {
+                checkClientMessage(ws, message)
+            })
+
+            ws.on('close', function close() {
+                let connAddress = fetchClientConnAddress(ws)
+                if (connAddress != null) {
+                    console.log(`client <${connAddress}> disconnect...`)
+                    delete ClientConns[connAddress]
+                }
+            })
+        } catch (e) {
+            console.log('keepOtherServerConn error...')
+        }
+    }
+}
+
+let OtherServerConnJob = null
+if (OtherServerConnJob == null) {
+    OtherServerConnJob = setInterval(keepOtherServerConn, 5000);
+}
 
 
 //start web server
@@ -502,7 +592,7 @@ http.createServer(function(request, response) {
                             "Content-Type": "text/html"
                         });
                         let pre_bulletin = ''
-                        if(item.pre_hash != 'F4C2EB8A3EBFC7B6D81676D79F928D0E'){
+                        if (item.pre_hash != 'F4C2EB8A3EBFC7B6D81676D79F928D0E') {
                             pre_bulletin = `<h3><a href="/bulletin/${item.pre_hash}">上一篇</a></h3>`
                         }
                         response.write(`
