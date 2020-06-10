@@ -1,3 +1,6 @@
+//oxo
+const oxoKeyPairs = require("oxo-keypairs")
+
 //config
 //standalone server
 const Seed = oxoKeyPairs.generateSeed("obeTvR9XDbUwquA6JPQhmbgaCCaiFa2rvf", 'secp256k1')
@@ -45,9 +48,6 @@ function halfSHA512(str) {
 function quarterSHA512(str) {
     return hasherSHA512(str).toUpperCase().substr(0, 32);
 }
-
-//oxo
-const oxoKeyPairs = require("oxo-keypairs")
 
 function strToHex(str) {
     let arr = []
