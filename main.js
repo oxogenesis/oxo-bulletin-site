@@ -2,6 +2,7 @@
 const oxoKeyPairs = require("oxo-keypairs")
 
 //config
+const SelfURL = "ws://127.0.0.1:3000"
 //standalone server
 const Seed = oxoKeyPairs.generateSeed("obeTvR9XDbUwquA6JPQhmbgaCCaiFa2rvf", 'secp256k1')
 const OtherServer = []
@@ -509,9 +510,10 @@ http.createServer(function(request, response) {
           <title>oxo-bulletin-site</title>
         </head>
         <body bgcolor="#8FBC8F">
-          <h1><a href="https://github.com/oxogenesis/oxo-chat-client">oxo客户端源码</a></h1>
-          <h1><a href="https://github.com/oxogenesis/oxo-bulletin-site">oxo公告网站源码</a></h1>
-          <h2><a href="/bulletins">缓存的公告</a></h2>
+          <h1><a href="/bulletins">缓存的公告</a></h1>
+          <h2><a href="https://github.com/oxogenesis/oxo-chat-client/releases">客户端下载</a></h2>
+          <h2>本站服务地址：${SelfURL}</h2>
+          <h2>本站服务账号：${Address}</h2>
         </body>
       </html>
       `);
