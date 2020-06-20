@@ -514,6 +514,7 @@ http.createServer(function(request, response) {
           <h2><a href="https://github.com/oxogenesis/oxo-chat-client/releases">客户端下载</a></h2>
           <h2>本站服务地址：${SelfURL}</h2>
           <h2>本站服务账号：${Address}</h2>
+          <h2>{"URL": "${SelfURL}", "Address": "${Address}"}</h2>
         </body>
       </html>
       `);
